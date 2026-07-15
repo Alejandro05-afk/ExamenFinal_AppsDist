@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: nginxExamen
+    ports:
+      - "5040:80"
+    depends_on:
+      - servidor1
+      - servidor2
+
+  mysql_principal:
+    container_name: MaestroP
+    image: mysql:8.0
+    ports:
+      - "5031:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: examenad
+    volumes:
+      - ./script_ex_2B.sql:/docker-entrypoint-initdb.d/script_ex_2B.sql
+      - master_datos:/var/lib/mysql
+
+  servidor1:
+    build:
+      context: ./servidor1
+      dockerfile: Dockerfile
+    container_name: servidor1
+    depends_on:
+      - mysql_principal
+    ports:
+      - "5034:5000"
+
+  servidor2:
+    build:
+      context: ./servidor2
+      dockerfile: Dockerfile
+    container_name: servidor2
+    depends_on:
+      - mysql_principal
+    ports:
+      - "5035:5000"
+
+  phpmyadmin:
+    container_name: phpMyAdminPrueba
+    image: phpmyadmin:latest
+    ports:
+      - "5033:80"
+    environment:
+      PMA_HOST: mysql_principal
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: root
+
+volumes:
+  master_datos:
+

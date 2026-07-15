@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Servidor1</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 600px; margin: 40px auto; }
+    input, textarea { width: 100%; margin-bottom: 10px; padding: 8px; }
+    button { padding: 10px 20px; }
+  </style>
+</head>
+<body>
+  <h2>Servidor 1</h2>
+        <button type="submit" action="/datos" method="GET">Consultar</button>
+
+        <Textarea id="response" rows="10" readonly>
+            <ul>
+                {% for pelicula in peliculas %}
+                    <li>
+                        {{ pelicula.titulo }} - {{ pelicula.director }} - {{ pelicula.genero }} - {{ pelicula.anio }}
+                    </li>
+                {% endfor %}
+            </ul>
+        </Textarea>
+
+  
+</body>
+</html>
