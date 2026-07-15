@@ -1,6 +1,9 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, render_template
 import mysql.connector
 from mysql.connector import Error
+import os
+import subprocess
+import sys
 
 app = Flask(__name__)
 
@@ -15,20 +18,55 @@ def get_connection():
     )
 
 
+@app.get("/")
+def index():
+    return render_template("index.html")
+
+
 @app.get("/datos")
 def datos():
     try:
         conn = get_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT usuario, accion, fecha, hora, short FROM redes LIMIT 5")
+        cursor.execute("SELECT usuario, accion, fecha, hora, short FROM redes LIMIT 10")
         rows = cursor.fetchall()
         cursor.close()
         conn.close()
-        return jsonify({"servidor": "server2", "datos": [
-            {"usuario": r[0], "accion": r[1], "fecha": r[2], "hora": r[3], "short": r[4]}
-            for r in rows
-        ]})
+        texto = "\n".join(f"{r[0]}, {r[1]}, {r[2]}, {r[3]}, {r[4]}" for r in rows)
+        return texto, 200, {"Content-Type": "text/plain; charset=utf-8"}
     except Error as exc:
+        return str(exc), 500, {"Content-Type": "text/plain; charset=utf-8"}
+
+
+@app.get("/mapreduce")
+def mapreduce():
+    try:
+        base_dir = "/app"
+        if not os.path.exists(os.path.join(base_dir, "MapReduce")):
+            base_dir = "/workspace"
+        entrada = os.path.join(base_dir, "MapReduce", "entrada.txt")
+        if not os.path.exists(entrada):
+            return jsonify({"error": "No existe el archivo de entrada"}), 500
+        subprocess.run(["bash", os.path.join(base_dir, "MapReduce", "split_entrada.sh"), entrada, os.path.join(base_dir, "MapReduce", "splits")], check=True)
+        with open(entrada, "r", encoding="utf-8") as fh:
+            entrada_data = fh.read()
+        resultado = subprocess.run(
+            [sys.executable, os.path.join(base_dir, "MapReduce", "mapper.py")],
+            input=entrada_data,
+            text=True,
+            capture_output=True,
+            check=True,
+        )
+        mapped_output = resultado.stdout
+        reduced = subprocess.run(
+            [sys.executable, os.path.join(base_dir, "MapReduce", "reducer.py")],
+            input=mapped_output,
+            text=True,
+            capture_output=True,
+            check=True,
+        )
+        return jsonify({"mapreduce": reduced.stdout.strip().splitlines()})
+    except Exception as exc:
         return jsonify({"error": str(exc)}), 500
 
 

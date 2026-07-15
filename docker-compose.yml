@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   nginx:
     build:
@@ -9,8 +7,10 @@ services:
     ports:
       - "5040:80"
     depends_on:
-      - servidor1
-      - servidor2
+      servidor1:
+        condition: service_healthy
+      servidor2:
+        condition: service_healthy
 
   mysql_principal:
     container_name: MaestroP
@@ -20,33 +20,56 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: examenad
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
     volumes:
       - ./script_ex_2B.sql:/docker-entrypoint-initdb.d/script_ex_2B.sql
       - master_datos:/var/lib/mysql
 
   servidor1:
     build:
-      context: ./servidor1
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./servidor1/Dockerfile
     container_name: servidor1
     depends_on:
-      - mysql_principal
+      mysql_principal:
+        condition: service_healthy
     ports:
       - "5034:5000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/datos', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
 
   servidor2:
     build:
-      context: ./servidor2
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./servidor2/Dockerfile
     container_name: servidor2
     depends_on:
-      - mysql_principal
+      mysql_principal:
+        condition: service_healthy
     ports:
       - "5035:5000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/datos', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
 
   phpmyadmin:
     container_name: phpMyAdminPrueba
     image: phpmyadmin:latest
+    depends_on:
+      mysql_principal:
+        condition: service_healthy
     ports:
       - "5033:80"
     environment:
