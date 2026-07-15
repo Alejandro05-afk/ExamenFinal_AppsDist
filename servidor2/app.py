@@ -41,15 +41,27 @@ def datos():
 @app.get("/mapreduce")
 def mapreduce():
     try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT usuario, accion, fecha, hora, short FROM redes")
+        rows = cursor.fetchall()
+        cursor.close()
+        conn.close()
+
         base_dir = "/app"
         if not os.path.exists(os.path.join(base_dir, "MapReduce")):
             base_dir = "/workspace"
-        entrada = os.path.join(base_dir, "MapReduce", "entrada.txt")
-        if not os.path.exists(entrada):
-            return jsonify({"error": "No existe el archivo de entrada"}), 500
-        subprocess.run(["bash", os.path.join(base_dir, "MapReduce", "split_entrada.sh"), entrada, os.path.join(base_dir, "MapReduce", "splits")], check=True)
-        with open(entrada, "r", encoding="utf-8") as fh:
+
+        entrada_path = os.path.join(base_dir, "MapReduce", "entrada_mysql.txt")
+        with open(entrada_path, "w", encoding="utf-8") as fh:
+            for row in rows:
+                fh.write(f"{row[0]}, {row[1]}, {row[2]}, {row[3]}, {row[4]}\n")
+
+        subprocess.run(["bash", os.path.join(base_dir, "MapReduce", "split_entrada.sh"), entrada_path, os.path.join(base_dir, "MapReduce", "splits")], check=True)
+
+        with open(entrada_path, "r", encoding="utf-8") as fh:
             entrada_data = fh.read()
+
         resultado = subprocess.run(
             [sys.executable, os.path.join(base_dir, "MapReduce", "mapper.py")],
             input=entrada_data,
